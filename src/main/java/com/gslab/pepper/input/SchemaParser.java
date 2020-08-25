@@ -1,15 +1,16 @@
 package com.gslab.pepper.input;
 
-import com.google.common.base.Splitter;
-import com.gslab.pepper.exception.PepperBoxException;
-import com.gslab.pepper.model.FieldExpressionMapping;
-import com.gslab.pepper.util.PropsKeys;
-import org.apache.commons.lang.StringUtils;
-
 import java.io.IOException;
 import java.io.PushbackReader;
 import java.io.StringReader;
 import java.util.List;
+
+import org.apache.commons.lang3.StringUtils;
+
+import com.google.common.base.Splitter;
+import com.gslab.pepper.exception.PepperBoxException;
+import com.gslab.pepper.model.FieldExpressionMapping;
+import com.gslab.pepper.util.PropsKeys;
 
 /**
  * The SchemaParser class reads input schema/field expression mapping and converts it into series of java statements.

@@ -1,37 +1,40 @@
 package com.gslab.pepper.test;
 
-import com.gslab.pepper.PepperBoxLoadGenerator;
-import com.gslab.pepper.util.PropsKeys;
-import kafka.admin.AdminUtils;
-import kafka.server.KafkaConfig;
-import kafka.server.KafkaServer;
-import kafka.utils.*;
-import kafka.zk.EmbeddedZookeeper;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Properties;
+
 import org.I0Itec.zkclient.ZkClient;
-import org.apache.jmeter.protocol.java.sampler.JavaSamplerContext;
 import org.apache.jmeter.threads.JMeterContext;
 import org.apache.jmeter.threads.JMeterContextService;
 import org.apache.jmeter.threads.JMeterVariables;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.utils.Time;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.Properties;
+import com.gslab.pepper.PepperBoxLoadGenerator;
+
+import kafka.server.KafkaConfig;
+import kafka.server.KafkaServer;
+import kafka.utils.MockTime;
+import kafka.utils.TestUtils;
+import kafka.utils.ZKStringSerializer$;
+import kafka.zk.EmbeddedZookeeper;
 
 /**
  * Created by satish on 5/3/17.
  */
 public class PepperBoxLoadGenTest {
-    private static final String ZKHOST = "127.0.0.1";
-    private static final String BROKERHOST = "127.0.0.1";
+    private static final String ZKHOST = "localhost";
+    private static final String BROKERHOST = "10.2.41.107";
     private static final String BROKERPORT = "9092";
     private static final String TOPIC = "test";
 
@@ -48,7 +51,6 @@ public class PepperBoxLoadGenTest {
 
         String zkConnect = ZKHOST + ":" + zkServer.port();
         zkClient = new ZkClient(zkConnect, 30000, 30000, ZKStringSerializer$.MODULE$);
-        ZkUtils zkUtils = ZkUtils.apply(zkClient, false);
 
         Properties brokerProps = new Properties();
         brokerProps.setProperty("zookeeper.connect", zkConnect);
@@ -89,9 +91,9 @@ public class PepperBoxLoadGenTest {
         consumerProps.put("auto.offset.reset", "earliest");
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProps);
         consumer.subscribe(Arrays.asList(TOPIC));
-        ConsumerRecords<String, String> records = consumer.poll(30000);
+        ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(30000));
         Assert.assertTrue("PepperBoxLoadGenerator validation failed", records.count() > 0);
-
+        consumer.close();
     }
 
     @After
