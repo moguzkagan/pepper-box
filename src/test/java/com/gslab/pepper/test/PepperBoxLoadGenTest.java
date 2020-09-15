@@ -34,7 +34,7 @@ import kafka.zk.EmbeddedZookeeper;
  */
 public class PepperBoxLoadGenTest {
     private static final String ZKHOST = "localhost";
-    private static final String BROKERHOST = "10.2.41.107";
+    private static final String BROKERHOST = "127.0.0.1";
     private static final String BROKERPORT = "9092";
     private static final String TOPIC = "test";
 
@@ -57,7 +57,10 @@ public class PepperBoxLoadGenTest {
         brokerProps.setProperty("broker.id", "0");
         brokerProps.setProperty("log.dirs", Files.createTempDirectory("kafka-").toAbsolutePath().toString());
         brokerProps.setProperty("listeners", "PLAINTEXT://" + BROKERHOST +":" + BROKERPORT);
+        brokerProps.setProperty("default.replication.factor", "1");
+        brokerProps.setProperty("offsets.topic.replication.factor","1");
         KafkaConfig config = new KafkaConfig(brokerProps);
+       
         Time mock = new MockTime();
         kafkaServer = TestUtils.createServer(config, mock);
         //AdminUtils.createTopic(zkUtils, TOPIC, 1, 1, new Properties(), RackAwareMode.Disabled$.MODULE$);

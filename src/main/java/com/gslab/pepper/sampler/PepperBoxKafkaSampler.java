@@ -25,6 +25,7 @@ import org.apache.zookeeper.ZooKeeper;
 
 import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonObject;
+import com.gslab.pepper.util.EmptyWatcher;
 import com.gslab.pepper.util.ProducerKeys;
 import com.gslab.pepper.util.PropsKeys;
 
@@ -208,7 +209,7 @@ public class PepperBoxKafkaSampler extends AbstractJavaSamplerClient {
 
             try {
 
-                ZooKeeper zk = new ZooKeeper(zookeeperServers, 10000, null);
+          	 ZooKeeper zk = new ZooKeeper(zookeeperServers, 10000, new EmptyWatcher());
                 List<String> ids = zk.getChildren(PropsKeys.BROKER_IDS_ZK_PATH, false);
 
                 for (String id : ids) {

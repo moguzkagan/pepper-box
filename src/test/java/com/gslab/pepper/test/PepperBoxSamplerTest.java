@@ -69,6 +69,7 @@ public class PepperBoxSamplerTest {
 		brokerProps.setProperty("broker.id", "0");
 		brokerProps.setProperty("log.dirs", Files.createTempDirectory("kafka-").toAbsolutePath().toString());
 		brokerProps.setProperty("listeners", "PLAINTEXT://" + BROKERHOST + ":" + BROKERPORT);
+		brokerProps.setProperty("default.replication.factor", "1");
 		KafkaConfig config = new KafkaConfig(brokerProps);
 		Time mock = new MockTime();
 		kafkaServer = TestUtils.createServer(config, mock);
