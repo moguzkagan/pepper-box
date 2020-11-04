@@ -9,9 +9,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -20,6 +20,9 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooKeeper;
 
 import com.eclipsesource.json.Json;
@@ -27,7 +30,6 @@ import com.eclipsesource.json.JsonObject;
 import com.google.common.util.concurrent.RateLimiter;
 import com.gslab.pepper.exception.PepperBoxException;
 import com.gslab.pepper.input.SchemaProcessor;
-import com.gslab.pepper.util.EmptyWatcher;
 import com.gslab.pepper.util.ProducerKeys;
 import com.gslab.pepper.util.PropsKeys;
 
@@ -37,18 +39,7 @@ import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import kafka.utils.CommandLineUtils;
 
-/**
- * The com.gslab.pepper.PepperBoxLoadGenerator standalone load generator. This
- * class takes arguments like throttle per thread, test duration, no of thread
- * and schema file and kafka producer properties and generates load at throttled
- * rate.
- *
- * @Author Satish Bhor<satish.bhor@gslab.com>, Nachiket Kate
- *         <nachiket.kate@gslab.com>
- * @Version 1.0
- * @since 28/02/2017
- */
-public class PepperBoxLoadGenerator extends Thread {
+public class PepperBoxTransactionalLoadGenerator extends Thread {
 
 	private static Logger log = LogManager.getLogger(PepperBoxLoadGenerator.class.getName());
 	private static RateLimiter limiter;
@@ -68,7 +59,7 @@ public class PepperBoxLoadGenerator extends Thread {
 	 * @param duration
 	 * @throws PepperBoxException
 	 */
-	public PepperBoxLoadGenerator(String schemaFile) throws PepperBoxException {
+	public PepperBoxTransactionalLoadGenerator(String schemaFile) throws PepperBoxException {
 		Path path = Paths.get(schemaFile);
 		log.debug("Creating input schema for " + Thread.currentThread().getName());
 		try {
@@ -82,6 +73,7 @@ public class PepperBoxLoadGenerator extends Thread {
 		log.debug("created input schema for " + Thread.currentThread().getName());
 
 		log.debug("Creating producer for" + Thread.currentThread().getName());
+		brokerProps.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, UUID.randomUUID().toString());
 		producer = new KafkaProducer<>(brokerProps);
 		log.debug("Created producer for" + Thread.currentThread().getName());
 	}
@@ -97,12 +89,21 @@ public class PepperBoxLoadGenerator extends Thread {
 		StringBuilder kafkaBrokers = new StringBuilder();
 
 		String zookeeperServers = properties.getProperty(ProducerKeys.ZOOKEEPER_SERVERS);
-
+		final CountDownLatch connectedSignal = new CountDownLatch(1);
 		if (zookeeperServers != null && !zookeeperServers.equalsIgnoreCase(ProducerKeys.ZOOKEEPER_SERVERS_DEFAULT)) {
 
 			try {
 
-				ZooKeeper zk = new ZooKeeper(zookeeperServers, 10000, new EmptyWatcher());
+				ZooKeeper zk = new ZooKeeper(zookeeperServers, 10000, new Watcher() {
+
+					@Override
+					public void process(WatchedEvent event) {
+						if (event.getState() == KeeperState.SyncConnected) {
+							connectedSignal.countDown();
+						}
+					}
+				});
+				connectedSignal.await();
 				List<String> ids = zk.getChildren(PropsKeys.BROKER_IDS_ZK_PATH, false);
 
 				for (String id : ids) {
@@ -148,14 +149,19 @@ public class PepperBoxLoadGenerator extends Thread {
 	public void run() {
 		log.info("Thread Started : " + Thread.currentThread().getName());
 		long sent = 0;
-//		while (endTime > System.currentTimeMillis()) {
+		producer.initTransactions();
+
 		while (sent < loopCount) {
+			producer.beginTransaction();
 			try {
+				boolean success = sendMessage();
+				if (success) {
+					producer.commitTransaction();
+					sent++;
+				}
 				if (sleepBetween != null)
 					Thread.sleep(sleepBetween);
-				sent++;
-				sendMessage();
-			} catch (InterruptedException | ExecutionException e) {
+			} catch (InterruptedException e) {
 				log.error("Could not send message.", e);
 			}
 		}
@@ -163,10 +169,16 @@ public class PepperBoxLoadGenerator extends Thread {
 		log.info("Thread ended : " + Thread.currentThread().getName());
 	}
 
-	public void sendMessage() throws InterruptedException, ExecutionException {
+	public boolean sendMessage() throws InterruptedException {
 		limiter.acquire();
 		ProducerRecord<String, String> keyedMsg = new ProducerRecord<>(topic, iterator.next().toString());
-		producer.send(keyedMsg).get();
+
+		try {
+			producer.send(keyedMsg).get();
+			return true;
+		} catch (ExecutionException ex) {
+			return false;
+		}
 	}
 
 	public static void checkRequiredArgs(OptionParser parser, OptionSet options, OptionSpec... required) {
@@ -204,7 +216,7 @@ public class PepperBoxLoadGenerator extends Thread {
 		try {
 			int totalThreads = options.valueOf(threadCount);
 			for (int i = 0; i < totalThreads; i++) {
-				PepperBoxLoadGenerator jsonProducer = new PepperBoxLoadGenerator(options.valueOf(schemaFile));
+				PepperBoxTransactionalLoadGenerator jsonProducer = new PepperBoxTransactionalLoadGenerator(options.valueOf(schemaFile));
 				jsonProducer.start();
 				Thread.sleep(100);
 			}
@@ -230,7 +242,7 @@ public class PepperBoxLoadGenerator extends Thread {
 
 		loopCount = lCount;
 		if (sleepBetween != null)
-			PepperBoxLoadGenerator.sleepBetween = sleepBetween;
+			PepperBoxTransactionalLoadGenerator.sleepBetween = sleepBetween;
 		brokerProps = new Properties();
 		brokerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, getBrokerServers(inputProps));
 		brokerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, inputProps.getProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG));
@@ -241,8 +253,8 @@ public class PepperBoxLoadGenerator extends Thread {
 		brokerProps.put(ProducerConfig.BATCH_SIZE_CONFIG, inputProps.getProperty(ProducerConfig.BATCH_SIZE_CONFIG));
 		brokerProps.put(ProducerConfig.LINGER_MS_CONFIG, inputProps.getProperty(ProducerConfig.LINGER_MS_CONFIG));
 		brokerProps.put(ProducerConfig.BUFFER_MEMORY_CONFIG, inputProps.getProperty(ProducerConfig.BUFFER_MEMORY_CONFIG));
+		brokerProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
 		brokerProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, inputProps.getProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG));
-
 		String kerbsEnabled = inputProps.getProperty(ProducerKeys.KERBEROS_ENABLED);
 
 		if (kerbsEnabled != null && kerbsEnabled.equals(ProducerKeys.FLAG_YES)) {

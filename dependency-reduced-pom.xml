@@ -12,6 +12,7 @@
           <include>**/*.properties</include>
           <include>**/*.tpl</include>
           <include>**/*.csv</include>
+          <include>**/*.xml</include>
         </includes>
       </resource>
     </resources>
@@ -100,14 +101,6 @@
         </exclusion>
         <exclusion>
           <artifactId>log4j-1.2-api</artifactId>
-          <groupId>org.apache.logging.log4j</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>log4j-api</artifactId>
-          <groupId>org.apache.logging.log4j</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>log4j-core</artifactId>
           <groupId>org.apache.logging.log4j</groupId>
         </exclusion>
         <exclusion>

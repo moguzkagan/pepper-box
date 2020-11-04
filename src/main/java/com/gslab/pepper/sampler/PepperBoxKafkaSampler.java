@@ -12,14 +12,14 @@ import org.apache.jmeter.protocol.java.sampler.AbstractJavaSamplerClient;
 import org.apache.jmeter.protocol.java.sampler.JavaSamplerContext;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.threads.JMeterContextService;
-import org.apache.jorphan.logging.LoggingManager;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
-import org.apache.log.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 
@@ -28,6 +28,7 @@ import com.eclipsesource.json.JsonObject;
 import com.gslab.pepper.util.EmptyWatcher;
 import com.gslab.pepper.util.ProducerKeys;
 import com.gslab.pepper.util.PropsKeys;
+
 
 /**
  * The PepperBoxKafkaSampler class custom java sampler for jmeter.
@@ -49,7 +50,7 @@ public class PepperBoxKafkaSampler extends AbstractJavaSamplerClient {
     private String msg_val_placeHolder;
 
     private boolean key_message_flag = false;
-    private static final Logger log = LoggingManager.getLoggerForClass();
+    private static final Logger log = LogManager.getLogger(PepperBoxKafkaSampler.class);
 
     /**
      * Set default parameters and their values

@@ -4,9 +4,14 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * The CustomFunctions allows users to write custom functions and then it can be
@@ -18,26 +23,59 @@ import java.util.logging.Logger;
  * @since 01/03/2017
  */
 public class CustomFunctions {
-	private static final Logger log = Logger.getLogger(CustomFunctions.class.getName());
+	private static final Logger log = LogManager.getLogger(CustomFunctions.class.getName());
 
 	public static String RANDOM_LINE_FROM_FILE(String filePath) {
 		try (RandomAccessFile file = new RandomAccessFile(new File(filePath), "r")) {
 			Random random = new Random();
+			int trys = 0;
 			String str = "";
 			do {
+				trys++;
 				int pos = random.nextInt((int) file.length());
 				file.seek(pos);
 				file.readLine();
 				str = file.readLine();
-			} while (str == null);
+			} while (str == null || trys < 5);
 
 			return str;
 		} catch (FileNotFoundException e) {
-			log.log(Level.SEVERE, "File not found ", e);
+			log.error("File not found ", e);
 			return null;
 		} catch (IOException e) {
-			log.log(Level.SEVERE, "Failed get line from file", e);
+			log.error("Failed get line from file", e);
 			return null;
 		}
+	}
+
+	public static String GET_UNIQUE_DATA_FROM_FILE(String filePath) {
+		try (RandomAccessFile file = new RandomAccessFile(new File(filePath), "r")) {
+			String str = "";
+			file.seek(0);
+			str = file.readLine();
+			return str;
+		} catch (FileNotFoundException e) {
+			log.error("File not found ", e);
+			return null;
+		} catch (IOException e) {
+			log.error("Failed get line from file", e);
+			return null;
+		}
+	}
+
+	private static void printUsage() {
+		OperatingSystemMXBean operatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean();
+		for (Method method : operatingSystemMXBean.getClass().getDeclaredMethods()) {
+			method.setAccessible(true);
+			if (method.getName().startsWith("get") && Modifier.isPublic(method.getModifiers())) {
+				Object value;
+				try {
+					value = method.invoke(operatingSystemMXBean);
+				} catch (Exception e) {
+					value = e;
+				} // try
+				log.debug(method.getName() + " = " + value);
+			} // if
+		} // for
 	}
 }

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="DEBUG" name="pepperbox"
+	packages="">
+	<Appenders>
+		<RollingFile name="pepperboxAppender"
+			fileName="./logs/pepperbox.log"
+			filePattern="./logs/pepperbox-%d{yyyy-MM-dd}_%i.zip">
+			<PatternLayout>
+				<Pattern>%d{HH:mm:ss,SSS} %-5p: %c %t %m%n</Pattern>
+			</PatternLayout>
+			<Policies>
+				<OnStartupTriggeringPolicy />
+				<SizeBasedTriggeringPolicy size="250 MB" />
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+			</Policies>
+		</RollingFile>
+		<Console name="STDOUT" target="SYSTEM_OUT">
+			<PatternLayout>
+				<Pattern>[%-5p] | %d{yyyy-MM-dd HH:mm:ss.SSS} | (%F:%L) - %m%n
+				</Pattern>
+			</PatternLayout>
+		</Console>
+	</Appenders>
+
+	<Loggers>
+		<logger name="com.gslab.pepper" level="INFO" additivity="false">
+			<appender-ref ref="pepperboxAppender" />
+			<appender-ref ref="STDOUT" />
+		</logger>
+		<Root level="debug">
+<!-- 			<appender-ref ref="pepperboxAppender" /> -->
+<!-- 			<appender-ref ref="STDOUT" /> -->
+		</Root>
+	</Loggers>
+</Configuration>

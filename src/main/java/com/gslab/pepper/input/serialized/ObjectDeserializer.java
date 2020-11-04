@@ -1,12 +1,13 @@
 package com.gslab.pepper.input.serialized;
 
-import org.apache.kafka.common.serialization.Deserializer;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.apache.kafka.common.serialization.Deserializer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * The ObjectDeserializer is custom Object deserializer for kafka consumer. This class takes byte array as input and returns object.
@@ -17,7 +18,7 @@ import java.util.logging.Logger;
  */
 public class ObjectDeserializer implements Deserializer {
 
-    private static Logger logger = Logger.getLogger(ObjectDeserializer.class.getName());
+    private static Logger log = LogManager.getLogger(ObjectDeserializer.class.getName());
 
     @Override
     public void configure(Map map, boolean b) {
@@ -34,7 +35,7 @@ public class ObjectDeserializer implements Deserializer {
         ) {
             receivedObj = ois.readObject();
         } catch (ClassNotFoundException | IOException e) {
-            logger.log(Level.SEVERE, "Failed to deserialize object", e);
+     	   log.error("Failed to deserialize object", e);
         }
         return receivedObj;
     }
